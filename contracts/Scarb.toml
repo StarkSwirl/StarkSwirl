@@ -1,0 +1,15 @@
+[package]
+name = "starkswirl_contracts"
+version = "0.1.0"
+author = "Filip Laurentiu"
+
+[dependencies]
+starknet = ">=2.6.3"
+alexandria_merkle_tree = { git = "https://github.com/keep-starknet-strange/alexandria.git" }
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.13.0" }
+
+[[target.starknet-contract]]
+
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.24.0" }

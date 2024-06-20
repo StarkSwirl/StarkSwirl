@@ -13,3 +13,11 @@ Cargo.lock
 
 
 .idea
+
+
+# proofs
+*_private_input.json
+*_public_input.json
+*_trace
+*_memory
+*proof.json
