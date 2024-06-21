@@ -2,10 +2,10 @@ use core::poseidon::PoseidonTrait;
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait, HashStateExTrait};
 
-use alexandria_merkle_tree::merkle_tree::{
-    Hasher, MerkleTree, pedersen::PedersenHasherImpl, MerkleTreeTrait
+mod merkle_tree;
+use merkle_tree::{
+    Hasher, MerkleTree, MerkleTreeTrait, MerkleTreeImpl, pedersen::PedersenHasherImpl
 };
-
 
 fn main(
     secret: felt252,
@@ -24,6 +24,6 @@ fn main(
 
     let mut merkle_tree: MerkleTree<Hasher> = MerkleTreeTrait::new();
 
-    assert(merkle_tree.compute_root(commitment, merkle_proof.span())  == root, 'Invalid proof');
+    assert(merkle_tree.verify(root, commitment, merkle_proof.span()) == true, 'Invalid proof');
 }
 
