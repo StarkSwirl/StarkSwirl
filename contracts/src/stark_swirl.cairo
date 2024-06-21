@@ -13,6 +13,10 @@ mod StarkSwirl {
     use cairo_verifier::{StarkProof, StarkProofImpl};
     use starkswirl_contracts::interfaces::IStarkSwirl;
 
+
+    // poseidon_hash(0)
+    const POSEIDON_0_HASH: felt252 = 2713945852911138914608023678711237035749237289914711755736801547179254184987; 
+
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
     // number of levels
@@ -71,6 +75,14 @@ mod StarkSwirl {
 
     #[abi(embed_v0)]
     impl StarkSwirl of IStarkSwirl<ContractState> {
+        fn token_address(self: @ContractState) -> ContractAddress {
+            let ERC20 = self.token_address.read();
+            return ERC20.contract_address;
+        }
+        fn denominator(self: @ContractState) -> u256 {
+            self.denominator.read()
+        }
+
         fn deposit(ref self: ContractState, commitment: felt252) {
             assert(self.commitments.read(commitment) == false, 'Commitment already added');
 
