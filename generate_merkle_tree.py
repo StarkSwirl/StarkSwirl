@@ -12,8 +12,8 @@ def fill_with_zeros(arr, desired_length):
 tree_size = 16
 
 # known commitments, in order, from the on-chain events
-my_commitment = pedersen_hash(poseidon_hash.poseidon_hash_single(10), poseidon_hash.poseidon_hash_single(11))
-commitments = [my_commitment]
+known_commitments = pedersen_hash(poseidon_hash.poseidon_hash_single(10), poseidon_hash.poseidon_hash_single(11))
+commitments = [known_commitments]
 
 
 def create_merkle_tree(data_list):

@@ -1,25 +1,29 @@
-fn main() -> u32 {
-    fib(16)
+use core::poseidon::PoseidonTrait;
+use core::pedersen::PedersenTrait;
+use core::hash::{HashStateTrait, HashStateExTrait};
+
+use alexandria_merkle_tree::merkle_tree::{
+    Hasher, MerkleTree, pedersen::PedersenHasherImpl, MerkleTreeTrait
+};
+
+
+fn main(
+    secret: felt252,
+    nullifier: felt252,
+    nullifier_hash: felt252,
+    commitment: felt252,
+    merkle_proof: Array<felt252>,
+    root: felt252
+) {
+
+    let new_nullifier_hash = PoseidonTrait::new().update_with(nullifier).finalize();
+    assert(new_nullifier_hash == nullifier_hash, 'Invalid nullifier');
+    let secret_hash = PoseidonTrait::new().update_with(secret).finalize();
+    let new_commitment = PedersenTrait::new(new_nullifier_hash).update_with(secret_hash).finalize();
+    assert(commitment == new_commitment, 'Invalid commitment');
+
+    let mut merkle_tree: MerkleTree<Hasher> = MerkleTreeTrait::new();
+
+    assert(merkle_tree.compute_root(commitment, merkle_proof.span())  == root, 'Invalid proof');
 }
 
-fn fib(mut n: u32) -> u32 {
-    let mut a: u32 = 0;
-    let mut b: u32 = 1;
-    while n != 0 {
-        n = n - 1;
-        let temp = b;
-        b = a + b;
-        a = temp;
-    };
-    a
-}
-
-#[cfg(test)]
-mod tests {
-    use super::fib;
-
-    #[test]
-    fn it_works() {
-        assert(fib(16) == 987, 'it works!');
-    }
-}

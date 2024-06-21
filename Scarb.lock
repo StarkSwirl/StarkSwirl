@@ -2,6 +2,11 @@
 version = 1
 
 [[package]]
+name = "alexandria_merkle_tree"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git#ef3292bbd9b35218dea18876373a31bf7f18934e"
+
+[[package]]
 name = "snforge_std"
 version = "0.24.0"
 source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.24.0#95e9fb09cb91b3c05295915179ee1b55bf923653"
@@ -10,5 +15,6 @@ source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.24.0#95e
 name = "starkswirl"
 version = "0.1.0"
 dependencies = [
+ "alexandria_merkle_tree",
  "snforge_std",
 ]

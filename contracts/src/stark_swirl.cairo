@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod StarkSwirl {
-    use core::traits::Into;
     use core::poseidon::PoseidonTrait;
     use core::hash::{HashStateTrait, HashStateExTrait};
     use starknet::{
