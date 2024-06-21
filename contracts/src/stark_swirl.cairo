@@ -9,14 +9,35 @@ mod StarkSwirl {
     use alexandria_merkle_tree::merkle_tree::{
         Hasher, MerkleTree, pedersen::PedersenHasherImpl, MerkleTreeTrait
     };
-    use starkswirl_contracts::interfaces::IStarkSwirl;
-
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
+    use cairo_verifier::{StarkProof, StarkProofImpl};
+    use starkswirl_contracts::interfaces::IStarkSwirl;
 
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
-    // number of leaves
-    const TREE_SIZE: usize = 8;
+    // number of levels
+    const LEVELS: usize = 4;
+
+    const SECURITY_BITS: felt252 = 50;
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Deposit: Deposit,
+        Withdraw: Withdraw
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Deposit {
+        #[key]
+        commitment: felt252,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Withdraw {
+        #[key]
+        nullifier_hash: felt252,
+    }
 
 
     #[storage]
@@ -34,15 +55,16 @@ mod StarkSwirl {
     #[constructor]
     fn constructor(ref self: ContractState, token_address: ContractAddress, denominator: u256) {
         assert(!token_address.is_zero(), 'Address 0 not allowed');
+        assert(!denominator.is_zero(), '0 amount not allowed');
         self.denominator.write(denominator);
 
         self.token_address.write(ERC20ABIDispatcher { contract_address: token_address });
 
         let i: usize = 0;
-        while i < TREE_SIZE {
-            self.filled_subtrees.write(i,zeros(i));
+        while i < LEVELS {
+            self.filled_subtrees.write(i, zeros(i));
         };
-        self.merkle_roots.write(0, zeros(TREE_SIZE - 1));
+        self.merkle_roots.write(0, zeros(LEVELS - 1));
         self.roots_len.write(1);
     }
 
@@ -59,32 +81,32 @@ mod StarkSwirl {
                     get_caller_address(), get_contract_address(), self.denominator.read()
                 );
 
-            /// update_tree();
+            insert(ref self, commitment);
 
             self.commitments.write(commitment, true);
+            self.emit(Deposit { commitment: commitment });
         }
 
         fn withdraw(
             ref self: ContractState,
-            proof: felt252,
+            proof: StarkProof,
             root: felt252,
             recipient: ContractAddress,
             nullifier_hash: felt252
         ) {
             assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
             assert(find_root(@self, root) == true, 'Root not found');
-            /// verify(proof)
+            proof.verify(SECURITY_BITS);
 
             self.nullifiers.write(nullifier_hash, true);
+            self.token_address.read().transfer(recipient, self.denominator.read());
+            self.emit(Withdraw { nullifier_hash: nullifier_hash });
         }
-
-
-        fn leaves(self: @ContractState) {}
     }
 
     fn insert(ref self: ContractState, hash: felt252) {
         let mut current_index = self.next_index.read();
-        assert(current_index != TREE_SIZE, 'Merkle tree is full');
+        assert(current_index != LEVELS, 'Merkle tree is full');
 
         let mut current_level_hash = hash;
         let mut left: felt252 = 0;
@@ -93,7 +115,7 @@ mod StarkSwirl {
         let mut hasher = PedersenHasherImpl::new();
 
         let mut level: usize = 0;
-        while level < TREE_SIZE {
+        while level < LEVELS {
             if (current_index % 2 == 0) { // left branch
                 left = current_level_hash;
                 right = zeros(level);
@@ -109,6 +131,8 @@ mod StarkSwirl {
         };
 
         self.next_index.write(self.next_index.read() + 1);
+        self.merkle_roots.write(self.roots_len.read(), current_level_hash);
+        self.roots_len.write(self.roots_len.read() + 1);
     }
 
 

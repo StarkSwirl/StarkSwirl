@@ -7,6 +7,11 @@ version = "0.1.0"
 source = "git+https://github.com/keep-starknet-strange/alexandria.git#ef3292bbd9b35218dea18876373a31bf7f18934e"
 
 [[package]]
+name = "cairo_verifier"
+version = "0.1.0"
+source = "git+https://github.com/HerodotusDev/integrity.git#f09095c7a7be7977d4b41e1ad4d35b32d2520e06"
+
+[[package]]
 name = "openzeppelin"
 version = "0.13.0"
 source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.13.0#978b4e75209da355667d8954d2450e32bd71fe49"
@@ -21,6 +26,7 @@ name = "starkswirl_contracts"
 version = "0.1.0"
 dependencies = [
  "alexandria_merkle_tree",
+ "cairo_verifier",
  "openzeppelin",
  "snforge_std",
 ]
