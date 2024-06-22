@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod StarkSwirl {
-    use core::poseidon::PoseidonTrait;
     use core::hash::{HashStateTrait, HashStateExTrait};
     use starknet::{
         ContractAddress, contract_address_const, get_caller_address, get_contract_address
@@ -11,10 +10,6 @@ mod StarkSwirl {
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use cairo_verifier::{StarkProof, StarkProofImpl};
     use starkswirl_contracts::interfaces::IStarkSwirl;
-
-
-    // poseidon_hash(0)
-    const POSEIDON_0_HASH: felt252 = 2713945852911138914608023678711237035749237289914711755736801547179254184987; 
 
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
@@ -178,30 +173,18 @@ mod StarkSwirl {
     fn zeros(level: usize) -> felt252 {
         match level {
             0 => {
-                // pedersen(poseidon(0), poseidon(0))
-                return 2494688673636795699140731058621453752305163011358859803833341381092752778782;
+                // pedersen(0, 0)
+                return 2089986280348253421170679821480865132823066470938446095505822317253594081284;
             },
             1 => {
-                return 2536973504930841035827773298593592681327550267909021527759854774781372267024;
+                return 3267327133124836230856387917991726181822805365921261798230069956387125461421;
             },
             2 => {
-                return 3168820576294055788093137617219701204279874680027811909268770663640987151107;
+                return 2818596543910544989677096212363154504206592528215241558801212434004582873304;
             },
             3 => {
-                return 893557775024593676856405225307484293889203777646349164712834287110724191802;
-            },
-            4 => {
-                return 2457764592963662570314190289271338960169321202535366699950186721239435073247;
-            },
-            5 => {
-                return 3419674558673531377106573994038826960986684925157811978470069836211202381160;
-            },
-            6 => {
-                return 1736706958586788585586261304539002893953495221392708361420953301640134214312;
-            },
-            7 => {
-                return 1936795156746501756241554972601075738475914828179455995787001990322868171639;
-            },
+                return 3252406550621480144832393888242428698826555249458964388979161634367367394033;
+            }
             _ => { panic_with_felt252('Unavailable level') }
         }
     }

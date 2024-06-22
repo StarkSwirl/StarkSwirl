@@ -1,7 +1,6 @@
 from starknet_py.hash.utils import pedersen_hash
-from poseidon_py import poseidon_hash
 
-zero_leaf = pedersen_hash(poseidon_hash.poseidon_hash_single(0), poseidon_hash.poseidon_hash_single(0))
+zero_leaf = pedersen_hash(0, 0)
 def fill_with_zeros(arr, desired_length):  
     zeros_needed = desired_length - len(arr)
     if zeros_needed > 0:
@@ -12,7 +11,8 @@ def fill_with_zeros(arr, desired_length):
 tree_size = 16
 
 # known commitments, in order, from the on-chain events
-known_commitments = pedersen_hash(poseidon_hash.poseidon_hash_single(10), poseidon_hash.poseidon_hash_single(11))
+secret, nullifier = 10, 11 # some hard to guess random numbers
+known_commitments = pedersen_hash(secret, nullifier)
 commitments = [known_commitments]
 
 
@@ -42,8 +42,6 @@ def create_merkle_tree(data_list):
     # The root hash is the only element left in the current_level
     return result
 
-
-
 def generate_proof(merkle_tree, index):
     """Generates a Merkle proof for the leaf at the given index."""
     proof = []
@@ -66,4 +64,8 @@ def generate_proof(merkle_tree, index):
 merkle_tree = create_merkle_tree(fill_with_zeros(commitments, tree_size))
 
 proof = generate_proof(merkle_tree, 0)
-print(f'Proof: {proof}')
+
+args = f'{secret} {nullifier} {pedersen_hash(0, nullifier)} {known_commitments} [' + ' '.join(str(x) for x in proof[:-1]) + f'] {proof[-1]}'
+print(args)
+
+
