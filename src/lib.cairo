@@ -16,9 +16,10 @@ fn main(
     peaks: Peaks,
     proof: Proof
 ) {
-    validate_proof(
+    let result = validate_proof(
         secret, nullifier, nullifier_hash, commitment, root, index, last_pos, peaks, proof
     );
+    assert(result.is_ok(), 'Invalid proof');
 }
 
 fn validate_proof(
@@ -31,13 +32,12 @@ fn validate_proof(
     last_pos: usize,
     peaks: Peaks,
     proof: Proof
-) {
+) -> Result<bool, felt252> {
     assert(pedersen(0, nullifier) == nullifier_hash, 'Invalid nullifier');
     assert(pedersen(secret, nullifier) == commitment, 'Invalid commitment');
 
     let mmr = MMRImpl::new(root, last_pos);
-    let result = mmr.verify_proof(index, commitment, peaks, proof);
-    assert(result.is_ok(), 'Invalid proof');
+    mmr.verify_proof(index, commitment, peaks, proof)
 }
 
 
@@ -89,8 +89,20 @@ mod tests {
 
         println!("index {}", index);
 
-        validate_proof(
-            secret, nullifier, nullifier_hash, commitment, mmr.root, index, last_pos, peaks, proof
+        assert(
+            validate_proof(
+                secret,
+                nullifier,
+                nullifier_hash,
+                commitment,
+                mmr.root,
+                index,
+                last_pos,
+                peaks,
+                proof
+            )
+                .is_ok(),
+            'Invalid proof'
         );
     }
 }
