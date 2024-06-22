@@ -31,7 +31,9 @@ mod StarkSwirl {
         #[key]
         peaks: Peaks,
         #[key]
-        new_index : usize
+        new_index : usize,
+        #[key]
+        new_root: felt252
     }
 
     #[derive(Drop, starknet::Event)]
@@ -90,9 +92,11 @@ mod StarkSwirl {
                     let new_index = mmr.last_pos+1;
                     add_root_to_history(ref self, new_root);
                     self.mmr.write(mmr);
-                    self.emit(Deposit { commitment: commitment, peaks : peaks_arr, new_index });
+                    self.emit(Deposit { commitment: commitment, peaks : peaks_arr, new_index, new_root });
                 }, 
-                Result::Err => {}
+                Result::Err => {
+                    panic_with_felt252('Deposit fail');
+                }
             };
 
             self.commitments.write(commitment, true);
