@@ -5,9 +5,9 @@ author = "Filip Laurentiu"
 
 [dependencies]
 starknet = ">=2.6.3"
-alexandria_merkle_tree = { git = "https://github.com/keep-starknet-strange/alexandria.git" }
 openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.13.0" }
 cairo_verifier = { git = "https://github.com/HerodotusDev/integrity.git" }
+cairo_lib = { git = "https://github.com/HerodotusDev/cairo-lib.git" }
 
 [[target.starknet-contract]]
 

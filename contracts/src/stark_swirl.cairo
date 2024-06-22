@@ -4,17 +4,16 @@ mod StarkSwirl {
     use starknet::{
         ContractAddress, contract_address_const, get_caller_address, get_contract_address
     };
-    use alexandria_merkle_tree::merkle_tree::{
-        Hasher, MerkleTree, pedersen::PedersenHasherImpl, MerkleTreeTrait
-    };
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use cairo_verifier::{StarkProof, StarkProofImpl};
     use starkswirl_contracts::interfaces::IStarkSwirl;
 
+    use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
+    use cairo_lib::data_structures::mmr::peaks::{Peaks, PeaksTrait};
+
+
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
-    // number of levels
-    const LEVELS: usize = 4;
 
     const SECURITY_BITS: felt252 = 50;
 
@@ -29,6 +28,10 @@ mod StarkSwirl {
     struct Deposit {
         #[key]
         commitment: felt252,
+        #[key]
+        peaks: Peaks,
+        #[key]
+        new_index : usize
     }
 
     #[derive(Drop, starknet::Event)]
@@ -46,8 +49,7 @@ mod StarkSwirl {
         merkle_roots: LegacyMap<felt252, felt252>, // history of the merkle roots
         roots_len: felt252, // length of the merkle roots
         commitments: LegacyMap<felt252, bool>, // leavs in the tree
-        filled_subtrees: LegacyMap<usize, felt252>,
-        next_index: usize // index for the next commitment
+        mmr: MMR,
     }
 
     #[constructor]
@@ -58,12 +60,7 @@ mod StarkSwirl {
 
         self.token_address.write(ERC20ABIDispatcher { contract_address: token_address });
 
-        let i: usize = 0;
-        while i < LEVELS {
-            self.filled_subtrees.write(i, zeros(i));
-        };
-        self.merkle_roots.write(0, zeros(LEVELS - 1));
-        self.roots_len.write(1);
+        self.mmr.write(MMRDefault::default());
     }
 
 
@@ -77,8 +74,8 @@ mod StarkSwirl {
             self.denominator.read()
         }
 
-        fn deposit(ref self: ContractState, commitment: felt252) {
-            assert(self.commitments.read(commitment) == false, 'Commitment already added');
+        fn deposit(ref self: ContractState, commitment: felt252, peaks: Peaks) {
+            assert(!self.commitments.read(commitment), 'Commitment already added');
 
             self
                 .token_address
@@ -87,10 +84,18 @@ mod StarkSwirl {
                     get_caller_address(), get_contract_address(), self.denominator.read()
                 );
 
-            insert(ref self, commitment);
+            let mut mmr = self.mmr.read();
+            match mmr.append(commitment, peaks) {
+                Result::Ok((new_root, peaks_arr)) => {
+                    let new_index = mmr.last_pos+1;
+                    add_root_to_history(ref self, new_root);
+                    self.mmr.write(MMRImpl::new(new_root,new_index));
+                    self.emit(Deposit { commitment: commitment, peaks : peaks_arr, new_index });
+                }, 
+                Result::Err => {}
+            };
 
             self.commitments.write(commitment, true);
-            self.emit(Deposit { commitment: commitment });
         }
 
         fn withdraw(
@@ -110,37 +115,11 @@ mod StarkSwirl {
         }
     }
 
-    fn insert(ref self: ContractState, hash: felt252) {
-        let mut current_index = self.next_index.read();
-        assert(current_index != LEVELS, 'Merkle tree is full');
-
-        let mut current_level_hash = hash;
-        let mut left: felt252 = 0;
-        let mut right: felt252 = 0;
-
-        let mut hasher = PedersenHasherImpl::new();
-
-        let mut level: usize = 0;
-        while level < LEVELS {
-            if (current_index % 2 == 0) { // left branch
-                left = current_level_hash;
-                right = zeros(level);
-                self.filled_subtrees.write(level, current_level_hash);
-            } else { // right branch
-                left = self.filled_subtrees.read(level);
-                right = current_level_hash;
-            }
-
-            current_level_hash = hasher.hash(left, right);
-            current_index /= 2;
-            level += 1;
-        };
-
-        self.next_index.write(self.next_index.read() + 1);
-        self.merkle_roots.write(self.roots_len.read(), current_level_hash);
-        self.roots_len.write(self.roots_len.read() + 1);
+    fn add_root_to_history(ref self : ContractState, new_root: felt252) {
+        let roots_len = self.roots_len.read();
+        self.merkle_roots.write(roots_len, new_root);
+        self.roots_len.write(roots_len +1);
     }
-
 
     fn find_root(self: @ContractState, root: felt252) -> bool {
         let mut current_index = self.roots_len.read();
@@ -167,25 +146,5 @@ mod StarkSwirl {
         };
 
         return root_found;
-    }
-
-
-    fn zeros(level: usize) -> felt252 {
-        match level {
-            0 => {
-                // pedersen(0, 0)
-                return 2089986280348253421170679821480865132823066470938446095505822317253594081284;
-            },
-            1 => {
-                return 3267327133124836230856387917991726181822805365921261798230069956387125461421;
-            },
-            2 => {
-                return 2818596543910544989677096212363154504206592528215241558801212434004582873304;
-            },
-            3 => {
-                return 3252406550621480144832393888242428698826555249458964388979161634367367394033;
-            }
-            _ => { panic_with_felt252('Unavailable level') }
-        }
     }
 }
