@@ -16,7 +16,9 @@ fn main(
     peaks: Peaks,
     proof: Proof
 ) {
-    validate_proof(secret, nullifier, nullifier_hash, commitment, root, index, last_pos, peaks, proof);
+    validate_proof(
+        secret, nullifier, nullifier_hash, commitment, root, index, last_pos, peaks, proof
+    );
 }
 
 fn validate_proof(
@@ -33,7 +35,7 @@ fn validate_proof(
     assert(pedersen(0, nullifier) == nullifier_hash, 'Invalid nullifier');
     assert(pedersen(secret, nullifier) == commitment, 'Invalid commitment');
 
-    let mut mmr = MMRImpl::new(root, last_pos);
+    let mmr = MMRImpl::new(root, last_pos);
     let result = mmr.verify_proof(index, commitment, peaks, proof);
     assert(result.is_ok(), 'Invalid proof');
 }
@@ -56,26 +58,39 @@ mod tests {
         let commitment = pedersen(secret, nullifier);
         let nullifier_hash = pedersen(0, nullifier);
 
-        let elem1 = PoseidonHasher::hash_single(1);
+        let elem1 = PoseidonHasher::hash_double(1, 1);
         let elem2 = commitment;
         let elem3 = PoseidonHasher::hash_double(elem1, elem2);
-        let elem4 = PoseidonHasher::hash_single(4);
-        let elem5 = PoseidonHasher::hash_single(5);
+        let elem4 = PoseidonHasher::hash_double(4, 4);
+        let elem5 = PoseidonHasher::hash_double(5, 5);
         let elem6 = PoseidonHasher::hash_double(elem4, elem5);
         let elem7 = PoseidonHasher::hash_double(elem3, elem6);
-        let elem8 = PoseidonHasher::hash_single(8);
+        let elem8 = PoseidonHasher::hash_double(8, 8);
+
+        println!("elem1 {}", elem1);
+        println!("elem2 {}", elem2);
+        println!("elem3 {}", elem3);
+        println!("elem4 {}", elem4);
+        println!("elem5 {}", elem5);
+        println!("elem6 {}", elem6);
+        println!("elem7 {}", elem7);
+        println!("elem8 {}", elem8);
+
+        let last_pos = 8;
 
         let mmr = MMRTrait::new(
             root: PoseidonHasher::hash_double(8, PoseidonHasher::hash_double(elem7, elem8)),
-            last_pos: 8
+            last_pos: last_pos
         );
 
         let proof = array![elem2, elem6].span();
         let peaks = array![elem7, elem8].span();
         let index = 1;
 
+        println!("index {}", index);
+
         validate_proof(
-            secret, nullifier, nullifier_hash, commitment, mmr.root, index, 8, peaks, proof
+            secret, nullifier, nullifier_hash, commitment, mmr.root, index, last_pos, peaks, proof
         );
     }
 }
