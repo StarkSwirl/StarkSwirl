@@ -89,7 +89,7 @@ mod StarkSwirl {
                 Result::Ok((new_root, peaks_arr)) => {
                     let new_index = mmr.last_pos+1;
                     add_root_to_history(ref self, new_root);
-                    self.mmr.write(MMRImpl::new(new_root,new_index));
+                    self.mmr.write(mmr);
                     self.emit(Deposit { commitment: commitment, peaks : peaks_arr, new_index });
                 }, 
                 Result::Err => {}
