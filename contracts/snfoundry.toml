@@ -1,0 +1,4 @@
+[sncast.default]
+account = "default"
+accounts-file = "~/.starknet_accounts/starknet_open_zeppelin_accounts.json"
+url = "http://localhost:9545"
