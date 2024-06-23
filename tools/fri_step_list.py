@@ -26,7 +26,7 @@ fri_step_list = [4] * q
 if r > 0:
     fri_step_list.append(r)
 
-with open('e2e_test/Cairo/cpu_air_params.json', 'r') as file:
+with open('tools/cpu_air_params.json', 'r') as file:
     cpu_air_params = json.load(file)
     cpu_air_params['stark']['fri']['fri_step_list'] = fri_step_list
     with open(cpu_air_params_destination_path, 'w') as new_file:
