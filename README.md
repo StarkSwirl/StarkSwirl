@@ -83,3 +83,15 @@ cd ../../
 
 ## Withdraw flow
 ![Withdraw](Withdraw.png)
+
+
+Deployed contract on sepolia network can be found [here](https://sepolia.starkscan.co/contract/0x0251a03effbd84af6def3138a41f338ffc1dc196c07ccdeb3405b3c55e21c85a#overview)
+
+
+## Parteners 
+### Herodotous
+ - Integrity verifier - we use the verifier to check on-chain that the proof from the stone-prover is valid. The proof will attest that the user know the pre-image of a hash and that hash is part of the merkle tree with the root stored in the contract on-chain
+ - Cairo-lib:MMR - Merkle Mountain Range is an extension to the merkle tree data structure that are very efficient when append data.
+
+### Starkware
+ - stone-prover - we use the prover build by Starkware to generate a privacy preserving proof of knowledge. The user can generate a proof of running a Cairo program that will attest the knowledge of the pre-image of a commitment that is stored inside a merkle tree.
