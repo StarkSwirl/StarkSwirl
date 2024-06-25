@@ -10,7 +10,12 @@ In order to interact with the application you need to generate two secret number
 When the user want to withdraw the tokens from the contract he can do it from another wallet an nobody could link these two wallets. In order to withdraw, the user will input the secret numbers into a local script that he will run on his trusted computer. Nobody can see these numbers, but the script will generate a zk proof that will attend the fact that the user know two numbers that when are hashed together it will result in a specific hash that is stored on-chain in a merkle tree in the contract.
 With this proof and nothing more, the user can withdraw tokens from any address that he want, without revealing any information that will link to the initial deposit address
 
-### Step 1: Compile and run the program to generate the prover input files:
+### Step1: Build the project
+```bash
+scarb build
+```
+
+### Step 2: Compile and run the program to generate the prover input files:
 ```bash
 ./tools/cairo1-run ./target/dev/starkswirl.sierra.json \
     --layout recursive \
@@ -28,12 +33,12 @@ Run with scarb
 ```
 
 
-### Step 2: Generate the cpu_air_params
+### Step 3: Generate the cpu_air_params
 ```bash
 python3 ./tools/fri_step_list.py public_input.json ./tools/new_cpu_air_params.json
 ```
 
-### Step 3: Run the prover:
+### Step 4: Run the prover:
 
 ```bash
 ./tools/cpu_air_prover \
