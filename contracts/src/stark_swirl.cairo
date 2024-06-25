@@ -5,12 +5,11 @@ mod StarkSwirl {
         ContractAddress, contract_address_const, get_caller_address, get_contract_address
     };
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
-    use cairo_verifier::{StarkProof, StarkProofImpl};
+    use cairo_verifier::{StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl};
     use starkswirl_contracts::interfaces::IStarkSwirl;
 
     use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
     use cairo_lib::data_structures::mmr::peaks::{Peaks, PeaksTrait};
-
 
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
@@ -104,19 +103,24 @@ mod StarkSwirl {
 
         fn withdraw(
             ref self: ContractState,
-            proof: StarkProof,
+            proof: StarkProofWithSerde,
             root: felt252,
             recipient: ContractAddress,
             nullifier_hash: felt252
         ) {
             assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
             assert(find_root(@self, root) == true, 'Root not found');
-            proof.verify(SECURITY_BITS);
+            verify_stark_proof(proof.into());
+
 
             self.nullifiers.write(nullifier_hash, true);
             self.token_address.read().transfer(recipient, self.denominator.read());
             self.emit(Withdraw { nullifier_hash: nullifier_hash });
         }
+    }
+
+    fn verify_stark_proof(proof: StarkProof)  {
+        proof.verify(SECURITY_BITS);
     }
 
     fn add_root_to_history(ref self : ContractState, new_root: felt252) {
