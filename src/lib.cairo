@@ -1,9 +1,6 @@
 use core::result::ResultTrait;
 use core::pedersen::pedersen;
-use cairo_lib::data_structures::mmr::{
-    mmr::{MMR, MMRImpl, MMRTrait}, peaks::{Peaks, PeaksTrait}, proof::{Proof, ProofTrait}
-};
-use cairo_lib::hashing::poseidon::PoseidonHasher;
+use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl, MMRTrait}, peaks::Peaks, proof::Proof};
 
 fn main(
     secret: felt252,
@@ -40,14 +37,11 @@ fn validate_proof(
     mmr.verify_proof(index, commitment, peaks, proof)
 }
 
-
 #[cfg(test)]
 mod tests {
     use core::result::ResultTrait;
     use core::pedersen::pedersen;
-    use cairo_lib::data_structures::mmr::{
-        mmr::{MMR, MMRImpl, MMRTrait}, peaks::{Peaks, PeaksTrait}, proof::{Proof, ProofTrait}
-    };
+    use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl}, peaks::Peaks, proof::Proof};
     use cairo_lib::hashing::poseidon::PoseidonHasher;
     use super::validate_proof;
 
@@ -78,7 +72,7 @@ mod tests {
 
         let last_pos = 8;
 
-        let mmr = MMRTrait::new(
+        let mmr = MMRImpl::new(
             root: PoseidonHasher::hash_double(8, PoseidonHasher::hash_double(elem7, elem8)),
             last_pos: last_pos
         );
@@ -106,3 +100,4 @@ mod tests {
         );
     }
 }
+

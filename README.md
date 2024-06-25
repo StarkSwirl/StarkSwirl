@@ -12,16 +12,21 @@ With this proof and nothing more, the user can withdraw tokens from any address 
 
 ### Step 1: Compile and run the program to generate the prover input files:
 ```bash
-cd tools && ./cairo1-run ../src/lib.cairo \
+./tools/cairo1-run ./target/dev/starkswirl.sierra.json \
     --layout recursive \
-    --air_public_input ../public_input.json \
-    --air_private_input ../private_input.json \
-    --trace_file ../trace \
-    --memory_file ../memory \
-    --proof_mode
-    --args '[10, 11, "1129815197211541481934112806673325772687763881719835256646064516195041515616", "2786116088662035069066189777680990419908396521409751409107279532930231316343", "1715556295878999972957474070461491436465516895623517391664966219403971354436", 1, 8, ["1953494062994346031473676762198846975365628378496072945247633132004575093152", "126113334767614658176188594640568076708777092902948464648204141774749582367"], ["2786116088662035069066189777680990419908396521409751409107279532930231316343", "3144957507973559441671210571674558258320337923190994230670584137810138721781"]]'
-cd ../
+    --air_public_input public_input.json \
+    --air_private_input private_input.json \
+    --trace_file trace \
+    --memory_file memory \
+    --proof_mode \
+    --args '10 11 1129815197211541481934112806673325772687763881719835256646064516195041515616 2786116088662035069066189777680990419908396521409751409107279532930231316343 1715556295878999972957474070461491436465516895623517391664966219403971354436 1 8 [1953494062994346031473676762198846975365628378496072945247633132004575093152 126113334767614658176188594640568076708777092902948464648204141774749582367] [2786116088662035069066189777680990419908396521409751409107279532930231316343 3144957507973559441671210571674558258320337923190994230670584137810138721781]'
 ```
+
+Run with scarb
+```bash
+    scarb cairo-run '[10, 11, "1129815197211541481934112806673325772687763881719835256646064516195041515616", "2786116088662035069066189777680990419908396521409751409107279532930231316343", "1715556295878999972957474070461491436465516895623517391664966219403971354436", 1, 8, ["1953494062994346031473676762198846975365628378496072945247633132004575093152", "126113334767614658176188594640568076708777092902948464648204141774749582367"], ["2786116088662035069066189777680990419908396521409751409107279532930231316343", "3144957507973559441671210571674558258320337923190994230670584137810138721781"]]'
+```
+
 
 ### Step 2: Generate the cpu_air_params
 ```bash
@@ -31,15 +36,13 @@ python3 ./tools/fri_step_list.py public_input.json ./tools/new_cpu_air_params.js
 ### Step 3: Run the prover:
 
 ```bash
-cd tools && ./cpu_air_prover \
+./tools/cpu_air_prover \
     --out_file ../proof.json \
-    --private_input_file ../private_input.json \
-    --public_input_file ../public_input.json \
-    --prover_config_file ./cpu_air_prover_config.json \
-    --parameter_file cpu_air_params.json \
+    --private_input_file private_input.json \
+    --public_input_file public_input.json \
+    --prover_config_file ./tools/cpu_air_prover_config.json \
+    --parameter_file ./tools/cpu_air_params.json \
     --generate_annotations
-
-cd ../
 ```
 Now you can take the proof.json and submit it to the StarkSwirl web and make the withdraw
 
@@ -48,11 +51,7 @@ Now you can take the proof.json and submit it to the StarkSwirl web and make the
 
 #### Finally, run the verifier to verify the proof:
 ```bash
-cd tools
-
-./cpu_air_verifier --in_file=../proof.json && echo "Successfully verified example proof."
-
-cd ../
+./tools/cpu_air_verifier --in_file=proof.json && echo "Successfully verified example proof."
 ```
 
 
