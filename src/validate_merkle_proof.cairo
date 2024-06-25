@@ -66,7 +66,7 @@ mod tests {
         println!("index {}", index);
 
         assert(
-            validate_proof(
+            validate(
                 secret,
                 nullifier,
                 nullifier_hash,
