@@ -1,22 +1,17 @@
 use core::result::ResultTrait;
 
 mod validate_merkle_proof;
-use validate_merkle_proof::validate;
+use validate_merkle_proof::{validate, Input};
+use core::serde::{Serde};
+use cairo_lib::data_structures::mmr::{peaks::Peaks, proof::Proof};
 
-fn main(
-    secret: felt252,
-    nullifier: felt252,
-    nullifier_hash: felt252,
-    commitment: felt252,
-    root: felt252,
-    index: usize,
-    last_pos: usize,
-    peaks: Array<felt252>,
-    proof: Array<felt252>
-) {
-    let result = validate(
-        secret, nullifier, nullifier_hash, commitment, root, index, last_pos, peaks, proof
-    );
-    assert(result.is_ok(), 'Invalid proof');
+fn main(input: Array<felt252>) -> Array<felt252> {
+    let mut span = input.span();
+
+    let inputs_struct: Input = Serde::deserialize(ref span).expect('Fail to deserialize');
+
+    validate(inputs_struct).expect('Invalid proof');
+
+    return ArrayTrait::new();
 }
 

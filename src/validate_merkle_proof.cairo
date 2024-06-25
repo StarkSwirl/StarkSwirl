@@ -1,7 +1,9 @@
 use core::pedersen::pedersen;
-use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl, MMRTrait}, peaks::Peaks, proof::Proof};
+use core::serde::{Serde};
+use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl, MMRTrait}};
 
-pub fn validate(
+#[derive(Serde)]
+pub struct Input {
     secret: felt252,
     nullifier: felt252,
     nullifier_hash: felt252,
@@ -9,14 +11,16 @@ pub fn validate(
     root: felt252,
     index: usize,
     last_pos: usize,
-    peaks: Array<felt252>,
-    proof: Array<felt252>
-) -> Result<bool, felt252> {
-    assert(pedersen(0, nullifier) == nullifier_hash, 'Invalid nullifier');
-    assert(pedersen(secret, nullifier) == commitment, 'Invalid commitment');
+    peaks: Span<felt252>,
+    proof: Span<felt252>
+}
 
-    let mmr = MMRImpl::new(root, last_pos);
-    mmr.verify_proof(index, commitment, peaks.span(), proof.span())
+pub fn validate(input: Input) -> Result<bool, felt252> {
+    assert(pedersen(0, input.nullifier) == input.nullifier_hash, 'Invalid nullifier');
+    assert(pedersen(input.secret, input.nullifier) == input.commitment, 'Invalid commitment');
+
+    let mmr = MMRImpl::new(input.root, input.last_pos);
+    mmr.verify_proof(input.index, input.commitment, input.peaks, input.proof)
 }
 
 #[cfg(test)]
@@ -25,7 +29,7 @@ mod tests {
     use core::pedersen::pedersen;
     use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl}, peaks::Peaks, proof::Proof};
     use cairo_lib::hashing::poseidon::PoseidonHasher;
-    use super::validate;
+    use super::{validate, Input};
 
     #[test]
     fn test_validate_proof() {
@@ -65,21 +69,19 @@ mod tests {
 
         println!("index {}", index);
 
-        assert(
-            validate(
-                secret,
-                nullifier,
-                nullifier_hash,
-                commitment,
-                mmr.root,
-                index,
-                last_pos,
-                peaks,
-                proof
-            )
-                .is_ok(),
-            'Invalid proof'
-        );
+        let input = Input {
+            secret: secret,
+            nullifier: nullifier,
+            nullifier_hash: nullifier_hash,
+            commitment: commitment,
+            root: mmr.root,
+            index: index,
+            last_pos: last_pos,
+            peaks: peaks.span(),
+            proof: proof.span()
+        };
+
+        validate(input).expect('Invalid proof');
     }
 }
 
