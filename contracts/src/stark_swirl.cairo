@@ -41,7 +41,6 @@ mod StarkSwirl {
         nullifier_hash: felt252,
     }
 
-
     #[storage]
     struct Storage {
         denominator: u256, // Amount of tokens that can be deposited
@@ -126,7 +125,15 @@ mod StarkSwirl {
     fn add_root_to_history(ref self : ContractState, new_root: felt252) {
         let roots_len = self.roots_len.read();
         self.merkle_roots.write(roots_len, new_root);
-        self.roots_len.write(roots_len +1);
+        let new_roots_len = roots_len + 1;
+        self.roots_len.write(new_roots_len);
+        remove_old_root(ref self, new_roots_len);
+    }
+
+
+    // remove the root that is older than allowed
+    fn remove_old_root(ref self: ContractState, current_len : felt252) {
+        self.merkle_roots.write(current_len - MAX_ROOTS_DEPTH, 0);
     }
 
     fn find_root(self: @ContractState, root: felt252) -> bool {

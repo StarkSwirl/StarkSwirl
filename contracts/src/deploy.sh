@@ -1,2 +1,0 @@
-sncast --account default --url http://localhost:9545 deploy --class-hash 0x274b41dfc92d11af13fe66ae4a269733dfc0280ab18cb02bbf985c205f5e42b \
---constructor-calldata 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7 0x2386F26FC10000 0
