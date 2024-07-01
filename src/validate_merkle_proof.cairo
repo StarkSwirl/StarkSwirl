@@ -75,6 +75,7 @@ mod tests {
             nullifier: nullifier,
             nullifier_hash: nullifier_hash,
             commitment: commitment,
+            receiver: 0,
             root: mmr.root,
             index: index,
             last_pos: last_pos,
