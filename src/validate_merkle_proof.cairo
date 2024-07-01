@@ -2,12 +2,13 @@ use core::pedersen::pedersen;
 use core::serde::{Serde};
 use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl, MMRTrait}};
 
-#[derive(Serde)]
+#[derive(Serde, Copy, Drop)]
 pub struct Input {
     secret: felt252,
     nullifier: felt252,
     nullifier_hash: felt252,
     commitment: felt252,
+    pub receiver: felt252,
     root: felt252,
     index: usize,
     last_pos: usize,

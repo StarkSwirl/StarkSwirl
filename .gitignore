@@ -23,3 +23,8 @@ Cargo.lock
 *_trace
 *_memory
 *proof.json
+
+
+# Added by cargo
+
+/target
