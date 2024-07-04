@@ -1,0 +1,24 @@
+{
+    "alpha-sepolia": {
+      "user1": {
+        "address": "0x59d1969e0891915968d122cb6b4f5aebd3a3ecfef9e43095e88cce8277c0eb9",
+        "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+        "deployed": true,
+        "legacy": false,
+        "private_key": "0xef858fb899c7b2a2ce49a5aae52501c9",
+        "public_key": "0x2c3f98d11f376e3ab7de02c9931364353c9b8b943912866411356f59703ee9e",
+        "salt": "99",
+        "type": "open_zeppelin"
+      },
+      "user2": {
+        "address": "0x6b6832ee448c5a9eac9ee984abf4612b6c3a739b5a6bc63f9073a4bf14b0b05",
+        "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+        "deployed": true,
+        "legacy": false,
+        "private_key": "0x417cb3506c05b7650fee615b3e069b74",
+        "public_key": "0x286798d26d09aa167b7dc8410abef4f2cdd6aa565dcdad2b964d9cda7c41a11",
+        "salt": "99",
+        "type": "open_zeppelin"
+      }
+    }
+  }
