@@ -2,10 +2,15 @@
 mod StarkSwirl {
     use core::hash::{HashStateTrait, HashStateExTrait};
     use starknet::{
-        ContractAddress, contract_address_const, get_caller_address, get_contract_address
+        ContractAddress, contract_address_const, get_caller_address, get_contract_address,
+        contract_address_try_from_felt252
     };
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
-    use cairo_verifier::{StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl};
+    use cairo_verifier::{
+        StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
+        air::public_memory::AddrValue,
+        air::public_input::PublicInput, air::layouts::recursive::constants::segments
+    };
     use starkswirl_contracts::interfaces::IStarkSwirl;
 
     use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
@@ -28,11 +33,13 @@ mod StarkSwirl {
         #[key]
         commitment: felt252,
         #[key]
+        new_index: usize,
+        #[key]
+        new_root: felt252,
+        #[key]
+        peaks_len: u32,
+        #[key]
         peaks: Peaks,
-        #[key]
-        new_index : usize,
-        #[key]
-        new_root: felt252
     }
 
     #[derive(Drop, starknet::Event)]
@@ -86,15 +93,24 @@ mod StarkSwirl {
 
             let mut mmr = self.mmr.read();
             match mmr.append(commitment, peaks) {
-                Result::Ok((new_root, peaks_arr)) => {
-                    let new_index = mmr.last_pos+1;
+                Result::Ok((
+                    new_root, peaks_arr
+                )) => {
+                    let new_index = mmr.last_pos + 1;
                     add_root_to_history(ref self, new_root);
                     self.mmr.write(mmr);
-                    self.emit(Deposit { commitment: commitment, peaks : peaks_arr, new_index, new_root });
-                }, 
-                Result::Err => {
-                    panic_with_felt252('Deposit fail');
-                }
+                    self
+                        .emit(
+                            Deposit {
+                                commitment: commitment,
+                                new_index,
+                                new_root,
+                                peaks_len: peaks_arr.len(),
+                                peaks: peaks_arr,
+                            }
+                        );
+                },
+                Result::Err => { panic_with_felt252('Deposit fail'); }
             };
 
             self.commitments.write(commitment, true);
@@ -104,25 +120,37 @@ mod StarkSwirl {
             ref self: ContractState,
             proof: StarkProofWithSerde,
             root: felt252,
-            recipient: ContractAddress,
             nullifier_hash: felt252
         ) {
             assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
             assert(find_root(@self, root) == true, 'Root not found');
-            verify_stark_proof(proof.into());
-
+            let stark_proof: StarkProof = proof.into();
+            let receiver = get_receiver_from_proof(@stark_proof);
+            verify_stark_proof(stark_proof);
 
             self.nullifiers.write(nullifier_hash, true);
-            self.token_address.read().transfer(recipient, self.denominator.read());
+            self
+                .token_address
+                .read()
+                .transfer(receiver, self.denominator.read());
             self.emit(Withdraw { nullifier_hash: nullifier_hash });
         }
     }
 
-    fn verify_stark_proof(proof: StarkProof)  {
+    fn verify_stark_proof(proof: StarkProof) {
         proof.verify(SECURITY_BITS);
     }
 
-    fn add_root_to_history(ref self : ContractState, new_root: felt252) {
+
+    // TODO: Check 
+    fn get_receiver_from_proof(proof: @StarkProof) -> ContractAddress {
+        let begin_addr: felt252 = *proof.public_input.segments.at(segments::OUTPUT).begin_addr;
+        let receiver_addr_value : AddrValue = *proof.public_input.main_page.at((begin_addr + 2).try_into().unwrap());
+
+        contract_address_try_from_felt252(receiver_addr_value.value).unwrap()
+    }
+
+    fn add_root_to_history(ref self: ContractState, new_root: felt252) {
         let roots_len = self.roots_len.read();
         self.merkle_roots.write(roots_len, new_root);
         let new_roots_len = roots_len + 1;
@@ -132,7 +160,7 @@ mod StarkSwirl {
 
 
     // remove the root that is older than allowed
-    fn remove_old_root(ref self: ContractState, current_len : felt252) {
+    fn remove_old_root(ref self: ContractState, current_len: felt252) {
         self.merkle_roots.write(current_len - MAX_ROOTS_DEPTH, 0);
     }
 
