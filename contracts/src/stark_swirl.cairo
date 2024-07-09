@@ -1,17 +1,19 @@
 #[starknet::contract]
 mod StarkSwirl {
-    use core::hash::{HashStateTrait, HashStateExTrait};
+    use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
     use starknet::{
         ContractAddress, contract_address_const, get_caller_address, get_contract_address,
-        contract_address_try_from_felt252
+        contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
+        SyscallResultTrait,
     };
+
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use cairo_verifier::{
         StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
-        air::public_memory::AddrValue,
-        air::public_input::PublicInput, air::layouts::recursive::constants::segments
+        air::public_memory::AddrValue, air::public_input::PublicInput,
+        air::layouts::recursive::constants::segments
     };
-    use starkswirl_contracts::interfaces::IStarkSwirl;
+    use starkswirl_contracts::interfaces::{IStarkSwirl, IAccountContract};
 
     use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
     use cairo_lib::data_structures::mmr::peaks::{Peaks, PeaksTrait};
@@ -20,6 +22,10 @@ mod StarkSwirl {
     const MAX_ROOTS_DEPTH: felt252 = 4;
 
     const SECURITY_BITS: felt252 = 50;
+
+    // selector('withdraw')
+    const WITHDRAW_SELECTOR: felt252 =
+        0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77;
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -70,6 +76,37 @@ mod StarkSwirl {
         self.mmr.write(MMRDefault::default());
     }
 
+    impl RelayerImpl of IAccountContract<ContractState> {
+        fn __validate__(ref self: ContractState, calls: Array<Call>) -> felt252 {
+            let this_contract_address = get_contract_address();
+            let mut calls_span = calls.span();
+            let self_snapshot = @self;
+            while let Option::Some(call) = calls_span
+                .pop_front() {
+                    assert(*call.to == this_contract_address, 'Allow call only to self');
+                    assert(*call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
+                    let mut calldata_mut = *call.calldata;
+                    let root = *calldata_mut.pop_front().unwrap();
+                    assert(find_root(self_snapshot, root) == true, 'Root not found');
+
+                    let nullifier_hash = *calldata_mut.pop_front().unwrap();
+                    assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
+                };
+
+            VALIDATED
+        }
+
+
+        // TODO: Implement __execute__
+        fn __execute__(ref self: ContractState, calls: Array<Call>) -> Array<Span<felt252>> {
+            assert!(get_caller_address().is_zero());
+            assert!(get_tx_info().unbox().version.try_into().unwrap() >= 1_u32);
+
+            // # take fees from the receiver to cover the execution fees
+            array![array![0].span()]
+        }
+    }
+
 
     #[abi(embed_v0)]
     impl StarkSwirl of IStarkSwirl<ContractState> {
@@ -118,21 +155,23 @@ mod StarkSwirl {
 
         fn withdraw(
             ref self: ContractState,
-            proof: StarkProofWithSerde,
             root: felt252,
-            nullifier_hash: felt252
+            nullifier_hash: felt252,
+            proof: StarkProofWithSerde,
         ) {
-            assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
-            assert(find_root(@self, root) == true, 'Root not found');
+            let caller_address = get_caller_address();
+            let this_contract_address = get_contract_address();
+            // if the call is from the same address this check is already performed in the __validate__ function
+            if caller_address != this_contract_address {
+                assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
+                assert(find_root(@self, root) == true, 'Root not found');
+            }
             let stark_proof: StarkProof = proof.into();
             let receiver = get_receiver_from_proof(@stark_proof);
             verify_stark_proof(stark_proof);
 
             self.nullifiers.write(nullifier_hash, true);
-            self
-                .token_address
-                .read()
-                .transfer(receiver, self.denominator.read());
+            self.token_address.read().transfer(receiver, self.denominator.read());
             self.emit(Withdraw { nullifier_hash: nullifier_hash });
         }
     }
@@ -141,11 +180,13 @@ mod StarkSwirl {
         proof.verify(SECURITY_BITS);
     }
 
-
     // TODO: Check 
     fn get_receiver_from_proof(proof: @StarkProof) -> ContractAddress {
         let begin_addr: felt252 = *proof.public_input.segments.at(segments::OUTPUT).begin_addr;
-        let receiver_addr_value : AddrValue = *proof.public_input.main_page.at((begin_addr + 2).try_into().unwrap());
+        let receiver_addr_value: AddrValue = *proof
+            .public_input
+            .main_page
+            .at((begin_addr + 2).try_into().unwrap());
 
         contract_address_try_from_felt252(receiver_addr_value.value).unwrap()
     }
@@ -157,7 +198,6 @@ mod StarkSwirl {
         self.roots_len.write(new_roots_len);
         remove_old_root(ref self, new_roots_len);
     }
-
 
     // remove the root that is older than allowed
     fn remove_old_root(ref self: ContractState, current_len: felt252) {
