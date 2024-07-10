@@ -1,10 +1,10 @@
-#[starknet::contract]
+#[starknet::contract(account)]
 mod StarkSwirl {
     use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
     use starknet::{
         ContractAddress, contract_address_const, get_caller_address, get_contract_address,
         contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
-        SyscallResultTrait,
+        SyscallResultTrait, syscalls::call_contract_syscall
     };
 
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
@@ -76,34 +76,47 @@ mod StarkSwirl {
         self.mmr.write(MMRDefault::default());
     }
 
+    #[abi(embed_v0)]
     impl RelayerImpl of IAccountContract<ContractState> {
-        fn __validate__(ref self: ContractState, calls: Array<Call>) -> felt252 {
+        fn __validate__(ref self: ContractState, mut calls: Array<Call>) -> felt252 {
             let this_contract_address = get_contract_address();
-            let mut calls_span = calls.span();
             let self_snapshot = @self;
-            while let Option::Some(call) = calls_span
+            while let Option::Some(call) = calls
                 .pop_front() {
-                    assert(*call.to == this_contract_address, 'Allow call only to self');
-                    assert(*call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
-                    let mut calldata_mut = *call.calldata;
+                    assert(call.to == this_contract_address, 'Allow call only to self');
+                    assert(call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
+                    let mut calldata_mut = call.calldata;
                     let root = *calldata_mut.pop_front().unwrap();
                     assert(find_root(self_snapshot, root) == true, 'Root not found');
-
-                    let nullifier_hash = *calldata_mut.pop_front().unwrap();
-                    assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
                 };
 
             VALIDATED
         }
 
+        fn __execute__(ref self: ContractState, mut calls: Array<Call>) -> Array<Span<felt252>> {
+            assert(starknet::get_caller_address().is_zero(), 'INVALID_CALLER');
 
-        // TODO: Implement __execute__
-        fn __execute__(ref self: ContractState, calls: Array<Call>) -> Array<Span<felt252>> {
-            assert!(get_caller_address().is_zero());
-            assert!(get_tx_info().unbox().version.try_into().unwrap() >= 1_u32);
+            let tx_info = starknet::get_tx_info().unbox();
+            assert(tx_info.version != 0, 'INVALID_TX_VERSION');
 
-            // # take fees from the receiver to cover the execution fees
-            array![array![0].span()]
+            let mut result = ArrayTrait::new();
+            loop {
+                match calls.pop_front() {
+                    Option::Some(call) => {
+                        let mut res = call_contract_syscall(
+                            address: call.to,
+                            entry_point_selector: call.selector,
+                            calldata: call.calldata
+                        )
+                            .unwrap_syscall();
+                        result.append(res);
+                    },
+                    Option::None => {
+                        break; // Can't break result; because of 'variable was previously moved'
+                    },
+                };
+            };
+            result
         }
     }
 
@@ -163,9 +176,9 @@ mod StarkSwirl {
             let this_contract_address = get_contract_address();
             // if the call is from the same address this check is already performed in the __validate__ function
             if caller_address != this_contract_address {
-                assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
                 assert(find_root(@self, root) == true, 'Root not found');
             }
+            assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
             let stark_proof: StarkProof = proof.into();
             let receiver = get_receiver_from_proof(@stark_proof);
             verify_stark_proof(stark_proof);
