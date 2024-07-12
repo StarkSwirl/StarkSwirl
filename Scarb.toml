@@ -13,3 +13,7 @@ snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag 
 
 [cairo]
 enable-gas = false
+
+[lib]
+casm = true
+sierra = true

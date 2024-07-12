@@ -10,7 +10,8 @@
                 0,
                 4,
                 4,
-                3
+                4,
+                2
             ],
             "last_layer_degree_bound": 128,
             "n_queries": 10,

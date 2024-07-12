@@ -18,10 +18,10 @@ Cargo.lock
 
 
 # proofs
-*_private_input.json
-*_public_input.json
-*_trace
-*_memory
+*private_input.json
+*public_input.json
+*trace
+*memory
 *proof.json
 
 

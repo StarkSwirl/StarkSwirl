@@ -18,7 +18,7 @@ scarb build
 ### Step 2: Compile and run the program to generate the prover input files:
 ```bash
 ./tools/cairo1-run ./target/dev/starkswirl.sierra.json \
-    --layout recursive \
+    --layout starknet_with_keccak \
     --air_public_input public_input.json \
     --air_private_input private_input.json \
     --trace_file trace \
@@ -35,14 +35,14 @@ Run with scarb
 
 ### Step 3: Generate the cpu_air_params
 ```bash
-python3 ./tools/fri_step_list.py public_input.json ./tools/new_cpu_air_params.json
+python3 ./tools/fri_step_list.py public_input.json ./tools/cpu_air_params.json
 ```
 
 ### Step 4: Run the prover:
 
 ```bash
 ./tools/cpu_air_prover \
-    --out_file ../proof.json \
+    --out_file ./proof.json \
     --private_input_file private_input.json \
     --public_input_file public_input.json \
     --prover_config_file ./tools/cpu_air_prover_config.json \

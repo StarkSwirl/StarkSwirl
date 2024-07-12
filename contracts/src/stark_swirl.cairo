@@ -10,7 +10,7 @@ mod StarkSwirl {
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use cairo_verifier::{
         StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
-        air::public_memory::AddrValue, air::public_input::PublicInput,
+        air::public_memory::AddrValue, air::public_input::{PublicInput, get_public_input_hash},
         air::layouts::recursive::constants::segments
     };
     use starkswirl_contracts::interfaces::{IStarkSwirl, IAccountContract};
@@ -63,17 +63,26 @@ mod StarkSwirl {
         roots_len: felt252, // length of the merkle roots
         commitments: LegacyMap<felt252, bool>, // leavs in the tree
         mmr: MMR,
+        public_input_hash: felt252
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, token_address: ContractAddress, denominator: u256) {
+    fn constructor(
+        ref self: ContractState,
+        token_address: ContractAddress,
+        denominator: u256,
+        public_input_hash: felt252
+    ) {
         assert(!token_address.is_zero(), 'Address 0 not allowed');
         assert(!denominator.is_zero(), '0 amount not allowed');
+        assert(!public_input_hash.is_zero(), 'Invalid program input hash');
         self.denominator.write(denominator);
 
         self.token_address.write(ERC20ABIDispatcher { contract_address: token_address });
 
         self.mmr.write(MMRDefault::default());
+
+        self.public_input_hash.write(public_input_hash);
     }
 
     #[abi(embed_v0)]
@@ -179,7 +188,10 @@ mod StarkSwirl {
                 assert(find_root(@self, root) == true, 'Root not found');
             }
             assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
+            
             let stark_proof: StarkProof = proof.into();
+            assert_correct_program(@self, @stark_proof.public_input);
+
             let receiver = get_receiver_from_proof(@stark_proof);
             verify_stark_proof(stark_proof);
 
@@ -187,6 +199,12 @@ mod StarkSwirl {
             self.token_address.read().transfer(receiver, self.denominator.read());
             self.emit(Withdraw { nullifier_hash: nullifier_hash });
         }
+    }
+
+    // check if the proof was generated for the right cairo program
+    fn assert_correct_program(self: @ContractState, public_input: @PublicInput) -> bool {
+        let public_input_hash = self.public_input_hash.read();
+        get_public_input_hash(public_input) == public_input_hash
     }
 
     fn verify_stark_proof(proof: StarkProof) {
