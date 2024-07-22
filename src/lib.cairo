@@ -1,8 +1,7 @@
 use core::result::ResultTrait;
-use core::serde::{Serde};
-use cairo_lib::data_structures::mmr::{peaks::Peaks, proof::Proof};
+use core::serde::Serde;
 
-pub mod validate_merkle_proof;
+mod validate_merkle_proof;
 use validate_merkle_proof::{validate, Input};
 
 

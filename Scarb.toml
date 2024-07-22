@@ -9,7 +9,7 @@ edition = "2023_11"
 cairo_lib = { git = "https://github.com/HerodotusDev/cairo-lib.git" }
 
 [dev-dependencies]
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.24.0" }
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.26.0" }
 
 [cairo]
 enable-gas = false
@@ -17,3 +17,10 @@ enable-gas = false
 [lib]
 casm = true
 sierra = true
+
+[tool.fmt]
+sort-module-level-items = true
+max-line-length = 120
+
+[tool.snforge]
+exit_first = true

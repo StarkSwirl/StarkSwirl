@@ -16,6 +16,7 @@ Cargo.lock
 
 .venv
 
+.snfoundry_cache
 
 # proofs
 *private_input.json

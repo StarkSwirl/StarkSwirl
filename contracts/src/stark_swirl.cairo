@@ -1,6 +1,7 @@
 #[starknet::contract(account)]
 mod StarkSwirl {
-    use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
+    use cairo_verifier::air::public_input::PublicInputTrait;
+use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
     use starknet::{
         ContractAddress, contract_address_const, get_caller_address, get_contract_address,
         contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
@@ -9,7 +10,7 @@ mod StarkSwirl {
 
     use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
     use cairo_verifier::{
-        StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
+        PublicInputImpl, StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
         air::public_memory::AddrValue, air::public_input::{PublicInput, get_public_input_hash},
         air::layouts::recursive::constants::segments
     };
@@ -188,7 +189,7 @@ mod StarkSwirl {
                 assert(find_root(@self, root) == true, 'Root not found');
             }
             assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
-            
+
             let stark_proof: StarkProof = proof.into();
             assert_correct_program(@self, @stark_proof.public_input);
 
@@ -204,6 +205,8 @@ mod StarkSwirl {
     // check if the proof was generated for the right cairo program
     fn assert_correct_program(self: @ContractState, public_input: @PublicInput) -> bool {
         let public_input_hash = self.public_input_hash.read();
+
+        let (_program_hash, _output_hash) = public_input.verify_cairo1();
         get_public_input_hash(public_input) == public_input_hash
     }
 
