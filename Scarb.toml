@@ -1,7 +1,11 @@
 [workspace]
-members = ["cairo", "contracts"]
+members = ["cli", "contracts", "contracts/scripts"]
 
 [workspace.dependencies]
 cairo_lib = { git = "https://github.com/HerodotusDev/cairo-lib.git" }
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.26.0" }
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.27.0" }
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.27.0" }
+starknet = ">=2.6.4"
 
+[workspace.tool.snforge]
+exit_first = true

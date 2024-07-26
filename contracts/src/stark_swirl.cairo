@@ -3,7 +3,7 @@ mod StarkSwirl {
     use cairo_verifier::air::public_input::PublicInputTrait;
 use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
     use starknet::{
-        ContractAddress, contract_address_const, get_caller_address, get_contract_address,
+        ContractAddress, get_caller_address, get_contract_address,
         contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
         SyscallResultTrait, syscalls::call_contract_syscall
     };
@@ -14,7 +14,7 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
         air::public_memory::AddrValue, air::public_input::{PublicInput, get_public_input_hash},
         air::layouts::recursive::constants::segments
     };
-    use starkswirl_contracts::interfaces::{IStarkSwirl, IAccountContract};
+    use contracts::interfaces::{IStarkSwirl, IAccountContract};
 
     use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
     use cairo_lib::data_structures::mmr::peaks::{Peaks, PeaksTrait};
@@ -222,7 +222,7 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
             .main_page
             .at((begin_addr + 2).try_into().unwrap());
 
-        contract_address_try_from_felt252(receiver_addr_value.value).unwrap()
+        contract_address_try_from_felt252(receiver_addr_value.value.into()).unwrap()
     }
 
     fn add_root_to_history(ref self: ContractState, new_root: felt252) {

@@ -1,10 +1,10 @@
 [package]
-name = "starkswirl_contracts"
+name = "contracts"
 version = "0.1.0"
 author = "Filip Laurentiu"
 
 [dependencies]
-starknet = ">=2.6.3"
+starknet.workspace = true
 cairo_lib.workspace = true
 openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.14.0" }
 cairo_verifier = { git = "https://github.com/HerodotusDev/integrity.git" }

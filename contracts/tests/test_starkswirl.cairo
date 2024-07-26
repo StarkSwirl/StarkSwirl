@@ -1,4 +1,4 @@
-use core::serde::{Serde};
+use core::serde::Serde;
 
 use starknet::{ContractAddress, contract_address_try_from_felt252};
 
@@ -25,25 +25,30 @@ struct StarkSwirlConstructorArgs {
     public_input_hash: felt252
 }
 
-fn deploy_erc20(args: ERC20ConstructorArgs) -> ContractAddress {
+fn deploy_erc20(constructor_args: ERC20ConstructorArgs) -> ContractAddress {
     let erc20contract_class = declare("TestERC20").unwrap();
 
-    let mut constructor_args = array![];
-    args.serialize(ref constructor_args);
+    let mut args = array![];
+    constructor_args.name.serialize(ref args);
+    constructor_args.symbol.serialize(ref args);
+    constructor_args.initial_supply.serialize(ref args);
+    constructor_args.recipient.serialize(ref args);
 
     let (contract_address, _constructor_return) = erc20contract_class
-        .deploy(@constructor_args)
+        .deploy(@args)
         .unwrap();
 
     contract_address
 }
 
-fn deploy_stark_swirl(args: StarkSwirlConstructorArgs) -> ContractAddress {
-    let mut constructor_args = array![];
-    args.serialize(ref constructor_args);
+fn deploy_stark_swirl(constructor_args: StarkSwirlConstructorArgs) -> ContractAddress {
+    let mut args = array![];
+    constructor_args.token_address.serialize(ref args);
+    constructor_args.denominator.serialize(ref args);
+    constructor_args.public_input_hash.serialize(ref args);
 
     let contract = declare("StarkSwirl").unwrap();
-    let (deployed_address, _constructor_return) = contract.deploy(@constructor_args).unwrap();
+    let (deployed_address, _constructor_return) = contract.deploy(@args).unwrap();
 
     deployed_address
 }
