@@ -9,3 +9,15 @@ starknet = ">=2.6.4"
 
 [workspace.tool.snforge]
 exit_first = true
+
+[profile.cli.cairo]
+enable-gas = false
+sierra-replace-ids = true
+
+[profile.cli.lib]
+casm = true
+sierra = true
+
+[tool.fmt]
+sort-module-level-items = true
+max-line-length = 120

@@ -8,6 +8,7 @@ starknet.workspace = true
 cairo_lib.workspace = true
 openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.14.0" }
 cairo_verifier = { git = "https://github.com/HerodotusDev/integrity.git" }
+cli = { path = "../cli" }
 
 [dev-dependencies]
 snforge_std.workspace = true

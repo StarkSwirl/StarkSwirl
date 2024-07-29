@@ -12,16 +12,9 @@ cairo_lib.workspace = true
 [dev-dependencies]
 snforge_std.workspace = true
 
-[cairo]
-enable-gas = false
-
 [lib]
 casm = true
 sierra = true
-
-[tool.fmt]
-sort-module-level-items = true
-max-line-length = 120
 
 [tool.snforge]
 exit_first = true

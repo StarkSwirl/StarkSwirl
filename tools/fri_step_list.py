@@ -13,7 +13,7 @@ with open(public_input_file_path, 'r') as file:
     public_input_file = json.load(file)
     program_n_steps = public_input_file['n_steps']
 
-print(program_n_steps)
+
 last_layer_degree_bound = 128
 last_layer_degree_bound_log = math.ceil(
     math.log(last_layer_degree_bound, 2)

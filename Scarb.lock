@@ -25,6 +25,7 @@ version = "0.1.0"
 dependencies = [
  "cairo_lib",
  "cairo_verifier",
+ "cli",
  "openzeppelin",
  "snforge_std",
 ]

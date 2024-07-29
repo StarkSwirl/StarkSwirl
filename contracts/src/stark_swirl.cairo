@@ -1,7 +1,8 @@
 #[starknet::contract(account)]
 mod StarkSwirl {
+    use core::option::OptionTrait;
     use cairo_verifier::air::public_input::PublicInputTrait;
-use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
+    use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
     use starknet::{
         ContractAddress, get_caller_address, get_contract_address,
         contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
@@ -14,10 +15,13 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
         air::public_memory::AddrValue, air::public_input::{PublicInput, get_public_input_hash},
         air::layouts::recursive::constants::segments
     };
-    use contracts::interfaces::{IStarkSwirl, IAccountContract};
 
-    use cairo_lib::data_structures::mmr::mmr::{MMR, MMRImpl, MMRTrait, MMRDefault};
-    use cairo_lib::data_structures::mmr::peaks::{Peaks, PeaksTrait};
+    use cairo_lib::data_structures::mmr::{
+        mmr::{MMR, MMRImpl, MMRTrait, MMRDefault}, peaks::{Peaks, PeaksTrait}
+    };
+
+    use contracts::interfaces::{IStarkSwirl, IAccountContract};
+    use cli::validate_merkle_proof::ValidateResult;
 
     // Controlling how old the root of the tree can be
     const MAX_ROOTS_DEPTH: felt252 = 4;
@@ -90,14 +94,10 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
     impl RelayerImpl of IAccountContract<ContractState> {
         fn __validate__(ref self: ContractState, mut calls: Array<Call>) -> felt252 {
             let this_contract_address = get_contract_address();
-            let self_snapshot = @self;
             while let Option::Some(call) = calls
                 .pop_front() {
                     assert(call.to == this_contract_address, 'Allow call only to self');
                     assert(call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
-                    let mut calldata_mut = call.calldata;
-                    let root = *calldata_mut.pop_front().unwrap();
-                    assert(find_root(self_snapshot, root) == true, 'Root not found');
                 };
 
             VALIDATED
@@ -176,29 +176,32 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
             self.commitments.write(commitment, true);
         }
 
-        fn withdraw(
-            ref self: ContractState,
-            root: felt252,
-            nullifier_hash: felt252,
-            proof: StarkProofWithSerde,
-        ) {
+        fn withdraw(ref self: ContractState, proof: StarkProofWithSerde,) {
             let caller_address = get_caller_address();
             let this_contract_address = get_contract_address();
-            // if the call is from the same address this check is already performed in the __validate__ function
-            if caller_address != this_contract_address {
-                assert(find_root(@self, root) == true, 'Root not found');
-            }
-            assert(self.nullifiers.read(nullifier_hash) == false, 'Nullifier already used');
 
             let stark_proof: StarkProof = proof.into();
+            let validate_output: ValidateResult = get_program_output(@stark_proof);
+
+            // if the call is from the same address this check is already performed in the __validate__ function
+            if caller_address != this_contract_address {
+                assert(find_root(@self, validate_output.root) == true, 'Root not found');
+            }
+            assert(
+                self.nullifiers.read(validate_output.nullifier_hash) == false,
+                'Nullifier already used'
+            );
+
             assert_correct_program(@self, @stark_proof.public_input);
 
-            let receiver = get_receiver_from_proof(@stark_proof);
             verify_stark_proof(stark_proof);
 
-            self.nullifiers.write(nullifier_hash, true);
+            let receiver = contract_address_try_from_felt252(validate_output.receiver)
+                .expect('Invalid receiver address');
+
+            self.nullifiers.write(validate_output.nullifier_hash, true);
             self.token_address.read().transfer(receiver, self.denominator.read());
-            self.emit(Withdraw { nullifier_hash: nullifier_hash });
+            self.emit(Withdraw { nullifier_hash: validate_output.nullifier_hash });
         }
     }
 
@@ -215,14 +218,18 @@ use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateE
     }
 
     // TODO: Check 
-    fn get_receiver_from_proof(proof: @StarkProof) -> ContractAddress {
+    fn get_program_output(proof: @StarkProof) -> ValidateResult {
         let begin_addr: felt252 = *proof.public_input.segments.at(segments::OUTPUT).begin_addr;
-        let receiver_addr_value: AddrValue = *proof
-            .public_input
-            .main_page
-            .at((begin_addr + 2).try_into().unwrap());
+        let main_page = proof.public_input.main_page;
 
-        contract_address_try_from_felt252(receiver_addr_value.value.into()).unwrap()
+        let output_size = *main_page.at((begin_addr + 1).try_into().unwrap());
+        assert(output_size.value == 3, 'Invalid output size');
+
+        let receiver: felt252 = *main_page.at((begin_addr + 2).try_into().unwrap()).value;
+        let nullifier_hash: felt252 = *main_page.at((begin_addr + 3).try_into().unwrap()).value;
+        let root: felt252 = *main_page.at((begin_addr + 4).try_into().unwrap()).value;
+
+        ValidateResult { receiver, nullifier_hash, root }
     }
 
     fn add_root_to_history(ref self: ContractState, new_root: felt252) {

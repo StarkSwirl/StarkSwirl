@@ -17,8 +17,8 @@ scarb build
 
 ### Step 2: Compile and run the program to generate the prover input files:
 ```bash
-./tools/cairo1-run ./target/dev/starkswirl.sierra.json \
-    --layout starknet_with_keccak \
+./tools/cairo1-run ./target/cli/cli.sierra.json \
+    --layout recursive_with_poseidon \
     --air_public_input public_input.json \
     --air_private_input private_input.json \
     --trace_file trace \
