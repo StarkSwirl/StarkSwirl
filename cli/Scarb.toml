@@ -12,9 +12,13 @@ cairo_lib.workspace = true
 [dev-dependencies]
 snforge_std.workspace = true
 
+[tool]
+snforge.workspace = true
+fmt.workspace = true
+
 [lib]
 casm = true
 sierra = true
 
-[tool.snforge]
-exit_first = true
+[scripts]
+build_cli.workspace = true
