@@ -6,8 +6,6 @@ use cairo_lib::data_structures::mmr::{mmr::{MMR, MMRImpl, MMRTrait}};
 struct Input {
     secret: felt252,
     nullifier: felt252,
-    nullifier_hash: felt252,
-    commitment: felt252,
     receiver: felt252,
     root: felt252,
     index: usize,
@@ -26,15 +24,15 @@ pub struct ValidateResult {
 pub fn validate(mut input_span: Span<felt252>) -> Result<ValidateResult, felt252> {
     let input: Input = Serde::deserialize(ref input_span).expect('Fail to deserialize');
 
-    assert(pedersen(0, input.nullifier) == input.nullifier_hash, 'Invalid nullifier');
-    assert(pedersen(input.secret, input.nullifier) == input.commitment, 'Invalid commitment');
+    let commitment = pedersen(input.secret, input.nullifier);
 
     let mmr = MMRImpl::new(input.root, input.last_pos);
-    mmr.verify_proof(input.index, input.commitment, input.peaks, input.proof).unwrap();
+    mmr.verify_proof(input.index, commitment, input.peaks, input.proof).unwrap();
 
+    let nullifier_hash = pedersen(0, input.nullifier);
     Result::Ok(
         ValidateResult {
-            receiver: input.receiver, nullifier_hash: input.nullifier_hash, root: input.root
+            receiver: input.receiver, nullifier_hash: nullifier_hash, root: input.root
         }
     )
 }
@@ -51,14 +49,12 @@ mod tests {
     fn test_validate_proof() {
         let secret: felt252 = 10;
         let nullifier: felt252 = 11;
-        let commitment = pedersen(secret, nullifier);
-        let nullifier_hash = pedersen(0, nullifier);
 
         let elem1 = PoseidonHasher::hash_double(1, 1);
-        let elem2 = commitment;
+        let elem2 = PoseidonHasher::hash_double(2, 2);
         let elem3 = PoseidonHasher::hash_double(elem1, elem2);
         let elem4 = PoseidonHasher::hash_double(4, 4);
-        let elem5 = PoseidonHasher::hash_double(5, 5);
+        let elem5 = PoseidonHasher::hash_double(6, 5);
         let elem6 = PoseidonHasher::hash_double(elem4, elem5);
         let elem7 = PoseidonHasher::hash_double(elem3, elem6);
         let elem8 = PoseidonHasher::hash_double(8, 8);
@@ -81,8 +77,6 @@ mod tests {
 
         secret.serialize(ref serialized);
         nullifier.serialize(ref serialized);
-        nullifier_hash.serialize(ref serialized);
-        commitment.serialize(ref serialized);
         receiver.serialize(ref serialized);
         mmr.root.serialize(ref serialized);
         index.serialize(ref serialized);

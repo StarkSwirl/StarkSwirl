@@ -1,0 +1,3 @@
+[submodule "cli/cairo-vm"]
+	path = cli/cairo-vm
+	url = https://github.com/lambdaclass/cairo-vm.git
