@@ -12,7 +12,7 @@ With this proof and nothing more, the user can withdraw tokens from any address 
 
 ### Step1: Build the project
 ```bash
-scarb build
+scarb run build_cli --package cli
 ```
 
 ### Step 2: Compile and run the program to generate the prover input files:
