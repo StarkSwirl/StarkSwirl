@@ -7,7 +7,11 @@ pub trait IStarkSwirl<TContractState> {
     fn deposit(ref self: TContractState, commitment: felt252, peaks: Peaks);
     fn withdraw(ref self: TContractState, proof: StarkProofWithSerde);
     fn token_address(self: @TContractState) -> ContractAddress;
+    fn set_fees(ref self: TContractState, fee_percent : u256);
+    fn collect_fees(ref self: TContractState);
+
     fn denominator(self: @TContractState) -> u256;
+    fn current_fees(self: @TContractState) -> u256;
 }
 
 #[starknet::interface]

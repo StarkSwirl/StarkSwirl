@@ -1,18 +1,24 @@
 #[starknet::contract(account)]
 mod StarkSwirl {
-    use core::option::OptionTrait;
-    use cairo_verifier::air::public_input::PublicInputTrait;
-    use core::{array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait}};
+    use core::{
+        array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait},
+        option::OptionTrait
+    };
     use starknet::{
         ContractAddress, get_caller_address, get_contract_address,
         contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
         SyscallResultTrait, syscalls::call_contract_syscall
     };
 
-    use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
+    use openzeppelin::{
+        token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait},
+        access::ownable::OwnableComponent
+    };
+
     use cairo_verifier::{
         PublicInputImpl, StarkProofWithSerde, StarkProof, CairoVersion, StarkProofImpl,
-        air::public_memory::AddrValue, air::public_input::{PublicInput, get_public_input_hash},
+        air::public_memory::AddrValue,
+        air::public_input::{PublicInput, PublicInputTrait, get_public_input_hash},
         air::layouts::recursive::constants::segments
     };
 
@@ -32,11 +38,20 @@ mod StarkSwirl {
     const WITHDRAW_SELECTOR: felt252 =
         0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77;
 
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
         Deposit: Deposit,
-        Withdraw: Withdraw
+        Withdraw: Withdraw,
+        OwnableEvent: OwnableComponent::Event,
+        FeesChanged: FeesChanged,
+        FeesCollected: FeesCollected,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -59,6 +74,18 @@ mod StarkSwirl {
         nullifier_hash: felt252,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct FeesChanged {
+        #[key]
+        new_fees: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct FeesCollected {
+        #[key]
+        collected_fees: u256,
+    }
+
     #[storage]
     struct Storage {
         denominator: u256, // Amount of tokens that can be deposited
@@ -68,7 +95,11 @@ mod StarkSwirl {
         roots_len: felt252, // length of the merkle roots
         commitments: LegacyMap<felt252, bool>, // leavs in the tree
         mmr: MMR,
-        public_input_hash: felt252
+        public_input_hash: felt252,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        fee_amount: u256,
+        uncollected_fees: u256
     }
 
     #[constructor]
@@ -76,18 +107,28 @@ mod StarkSwirl {
         ref self: ContractState,
         token_address: ContractAddress,
         denominator: u256,
-        public_input_hash: felt252
+        public_input_hash: felt252,
+        fee_percent: u256, // multiplied by 10
+        owner: Option<ContractAddress>
     ) {
         assert(!token_address.is_zero(), 'Address 0 not allowed');
         assert(!denominator.is_zero(), '0 amount not allowed');
         assert(!public_input_hash.is_zero(), 'Invalid program input hash');
+
         self.denominator.write(denominator);
-
         self.token_address.write(ERC20ABIDispatcher { contract_address: token_address });
-
         self.mmr.write(MMRDefault::default());
-
         self.public_input_hash.write(public_input_hash);
+
+        match owner {
+            Option::Some(addr) => self.ownable.initializer(addr),
+            Option::None => {
+                let addr = get_caller_address();
+                self.ownable.initializer(addr);
+            }
+        }
+
+        self.set_fees(fee_percent);
     }
 
     #[abi(embed_v0)]
@@ -139,6 +180,10 @@ mod StarkSwirl {
         }
         fn denominator(self: @ContractState) -> u256 {
             self.denominator.read()
+        }
+
+        fn current_fees(self: @ContractState) -> u256 {
+            self.fee_amount.read()
         }
 
         fn deposit(ref self: ContractState, commitment: felt252, peaks: Peaks) {
@@ -200,10 +245,42 @@ mod StarkSwirl {
                 .expect('Invalid receiver address');
 
             self.nullifiers.write(validate_output.nullifier_hash, true);
-            self.token_address.read().transfer(receiver, self.denominator.read());
+            self
+                .token_address
+                .read()
+                .transfer(receiver, self.denominator.read() - self.fee_amount.read());
+            add_uncollected_fee(ref self);
             self.emit(Withdraw { nullifier_hash: validate_output.nullifier_hash });
         }
+
+
+        // percent is multiplied by 10
+        fn set_fees(ref self: ContractState, fee_percent: u256) {
+            self.ownable.assert_only_owner();
+            let denominator = self.denominator.read();
+            let new_fees = (fee_percent * denominator) / 1000;
+            self.fee_amount.write(new_fees);
+
+            self.emit(FeesChanged { new_fees });
+        }
+
+        fn collect_fees(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+            let uncollected_fees = self.uncollected_fees.read();
+            self.token_address.read().transfer(self.ownable.owner(), uncollected_fees);
+            self.uncollected_fees.write(0);
+
+            self.emit(FeesCollected { collected_fees: uncollected_fees });
+        }
     }
+
+    fn add_uncollected_fee(ref self: ContractState) {
+        let current_fee = self.fee_amount.read();
+        let current_uncollected_fees = self.uncollected_fees.read();
+
+        self.uncollected_fees.write(current_uncollected_fees + current_fee);
+    }
+
 
     // check if the proof was generated for the right cairo program
     fn assert_correct_program(self: @ContractState, public_input: @PublicInput) -> bool {

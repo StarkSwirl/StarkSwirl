@@ -51,10 +51,10 @@ mod tests {
         let nullifier: felt252 = 11;
 
         let elem1 = PoseidonHasher::hash_double(1, 1);
-        let elem2 = PoseidonHasher::hash_double(2, 2);
+        let elem2 = pedersen(secret, nullifier);
         let elem3 = PoseidonHasher::hash_double(elem1, elem2);
         let elem4 = PoseidonHasher::hash_double(4, 4);
-        let elem5 = PoseidonHasher::hash_double(6, 5);
+        let elem5 = PoseidonHasher::hash_double(5, 5);
         let elem6 = PoseidonHasher::hash_double(elem4, elem5);
         let elem7 = PoseidonHasher::hash_double(elem3, elem6);
         let elem8 = PoseidonHasher::hash_double(8, 8);
@@ -70,8 +70,6 @@ mod tests {
         let peaks = array![elem7, elem8];
         let index: usize = 1;
         let receiver: felt252 = 0;
-
-        println!("index {}", index);
 
         let mut serialized = array![];
 
