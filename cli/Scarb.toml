@@ -2,7 +2,7 @@
 name = "cli"
 version = "0.1.0"
 author = "Filip Laurentiu"
-edition = "2023_11"
+edition.workspace = true
 
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 

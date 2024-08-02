@@ -2,6 +2,7 @@
 name = "contracts"
 version = "0.1.0"
 author = "Filip Laurentiu"
+edition.workspace = true
 
 [dependencies]
 starknet.workspace = true

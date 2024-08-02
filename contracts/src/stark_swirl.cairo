@@ -2,12 +2,12 @@
 mod StarkSwirl {
     use core::{
         array::{Span, SpanTrait, SpanImpl}, hash::{HashStateTrait, HashStateExTrait},
-        option::OptionTrait
+        option::OptionTrait, num::traits::Zero
     };
+
     use starknet::{
-        ContractAddress, get_caller_address, get_contract_address,
-        contract_address_try_from_felt252, account::Call, get_tx_info, info::v2::TxInfo, VALIDATED,
-        SyscallResultTrait, syscalls::call_contract_syscall
+        ContractAddress, get_caller_address, get_contract_address, account::Call, get_tx_info,
+        TxInfo, VALIDATED, SyscallResultTrait, syscalls::call_contract_syscall
     };
 
     use openzeppelin::{
@@ -215,7 +215,7 @@ mod StarkSwirl {
                             }
                         );
                 },
-                Result::Err => { panic_with_felt252('Deposit fail'); }
+                Result::Err => { panic!("Deposit fail"); }
             };
 
             self.commitments.write(commitment, true);
@@ -228,7 +228,8 @@ mod StarkSwirl {
             let stark_proof: StarkProof = proof.into();
             let validate_output: ValidateResult = get_program_output(@stark_proof);
 
-            // if the call is from the same address this check is already performed in the __validate__ function
+            // if the call is from the same address this check is already performed in the
+            // __validate__ function
             if caller_address != this_contract_address {
                 assert(find_root(@self, validate_output.root) == true, 'Root not found');
             }
@@ -241,7 +242,9 @@ mod StarkSwirl {
 
             verify_stark_proof(stark_proof);
 
-            let receiver = contract_address_try_from_felt252(validate_output.receiver)
+            let receiver: ContractAddress = validate_output
+                .receiver
+                .try_into()
                 .expect('Invalid receiver address');
 
             self.nullifiers.write(validate_output.nullifier_hash, true);
@@ -294,7 +297,7 @@ mod StarkSwirl {
         proof.verify(SECURITY_BITS);
     }
 
-    // TODO: Check 
+    // TODO: Check
     fn get_program_output(proof: @StarkProof) -> ValidateResult {
         let begin_addr: felt252 = *proof.public_input.segments.at(segments::OUTPUT).begin_addr;
         let main_page = proof.public_input.main_page;
