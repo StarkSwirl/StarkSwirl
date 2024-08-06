@@ -1,6 +1,3 @@
-extern crate alloc;
-extern crate core;
-
 use core::str::FromStr;
 use clap::Parser;
 use cairo1_run::{Felt252, FuncArg};
@@ -10,8 +7,10 @@ use starknet::providers::jsonrpc::HttpTransport;
 use starknet::providers::{JsonRpcClient, Provider, Url};
 use starknet::core::utils::get_selector_from_name;
 mod run_cairo_program;
-use run_cairo_program::run_program;
+mod run_stone_prover;
 
+use run_cairo_program::run_program;
+use run_stone_prover::run_stone_prover;
 
 const SEPOLIA_CONTRACT_ADDRESS: &str =
     "0x0075476f93830558f37a403d632f95d76a0a5350a3b35a7199c858a43960f211";
@@ -78,13 +77,25 @@ async fn main() {
         FuncArg::Single(Felt252::from_str(&cli_args.receiver).unwrap()),
     ];
 
-    /*
-    args.push(FuncArg::Single(Felt252::from_str(root).unwrap()));
-    args.push(FuncArg::Single(Felt252::from_str(index).unwrap()));
-    args.push(FuncArg::Single(Felt252::from_str(last_pos).unwrap()));
-    args.push(FuncArg::Array(peaks.map(|p| Felt252::from_str(p).unwrap())));
-    args.push(FuncArg::Array(proof.map(|p| Felt252::from_str(p).unwrap())));
-     */
 
-    run_program(&args);
+    /*    args.push(FuncArg::Single(Felt252::from_str(root).unwrap()));
+        args.push(FuncArg::Single(Felt252::from_str(index).unwrap()));
+        args.push(FuncArg::Single(Felt252::from_str(last_pos).unwrap()));
+        args.push(FuncArg::Array(peaks.map(|p| Felt252::from_str(p).unwrap())));
+        args.push(FuncArg::Array(proof.map(|p| Felt252::from_str(p).unwrap())));
+
+    */
+
+    match run_program(&args) {
+        Ok(_) => println!("Program trace generated successfully"),
+        Err(_) => panic!("Unable to run the cairo program")
+    }
+
+    match run_stone_prover() {
+        Ok(_) => println!("Proof was generated successfully!"),
+        Err(err) => eprintln!("Something bad happen: {}", err)
+    }
 }
+
+
+
