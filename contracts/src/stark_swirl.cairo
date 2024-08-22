@@ -7,7 +7,8 @@ mod StarkSwirl {
 
     use starknet::{
         ContractAddress, get_caller_address, get_contract_address, account::Call, get_tx_info,
-        TxInfo, VALIDATED, SyscallResultTrait, syscalls::call_contract_syscall
+        TxInfo, VALIDATED, SyscallResultTrait, syscalls::call_contract_syscall,
+        storage::{Map, StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry}
     };
 
     use openzeppelin::{
@@ -89,11 +90,11 @@ mod StarkSwirl {
     #[storage]
     struct Storage {
         denominator: u256, // Amount of tokens that can be deposited
-        nullifiers: LegacyMap<felt252, bool>, // Deposits that are already withdrawn
+        nullifiers: Map<felt252, bool>, // Deposits that are already withdrawn
         token_address: ERC20ABIDispatcher, // address of the token in this instance
-        merkle_roots: LegacyMap<felt252, felt252>, // history of the merkle roots
+        merkle_roots: Map<felt252, felt252>, // history of the merkle roots
         roots_len: felt252, // length of the merkle roots
-        commitments: LegacyMap<felt252, bool>, // leavs in the tree
+        commitments: Map<felt252, bool>, // leavs in the tree
         mmr: MMR,
         public_input_hash: felt252,
         #[substorage(v0)]
@@ -135,11 +136,10 @@ mod StarkSwirl {
     impl RelayerImpl of IAccountContract<ContractState> {
         fn __validate__(ref self: ContractState, mut calls: Array<Call>) -> felt252 {
             let this_contract_address = get_contract_address();
-            while let Option::Some(call) = calls
-                .pop_front() {
-                    assert(call.to == this_contract_address, 'Allow call only to self');
-                    assert(call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
-                };
+            while let Option::Some(call) = calls.pop_front() {
+                assert(call.to == this_contract_address, 'Allow call only to self');
+                assert(call.selector == WITHDRAW_SELECTOR, 'Only withdraw function allowed');
+            };
 
             VALIDATED
         }
@@ -187,7 +187,7 @@ mod StarkSwirl {
         }
 
         fn deposit(ref self: ContractState, commitment: felt252, peaks: Peaks) {
-            assert(!self.commitments.read(commitment), 'Commitment already added');
+            assert(!self.commitments.entry(commitment).read(), 'Commitment already added');
 
             self
                 .token_address
@@ -218,7 +218,7 @@ mod StarkSwirl {
                 Result::Err => { panic!("Deposit fail"); }
             };
 
-            self.commitments.write(commitment, true);
+            self.commitments.entry(commitment).write(true);
         }
 
         fn withdraw(ref self: ContractState, proof: StarkProofWithSerde,) {
@@ -234,7 +234,7 @@ mod StarkSwirl {
                 assert(find_root(@self, validate_output.root) == true, 'Root not found');
             }
             assert(
-                self.nullifiers.read(validate_output.nullifier_hash) == false,
+                self.nullifiers.entry(validate_output.nullifier_hash).read() == false,
                 'Nullifier already used'
             );
 
@@ -247,7 +247,7 @@ mod StarkSwirl {
                 .try_into()
                 .expect('Invalid receiver address');
 
-            self.nullifiers.write(validate_output.nullifier_hash, true);
+            self.nullifiers.entry(validate_output.nullifier_hash).write(true);
             self
                 .token_address
                 .read()
@@ -314,7 +314,7 @@ mod StarkSwirl {
 
     fn add_root_to_history(ref self: ContractState, new_root: felt252) {
         let roots_len = self.roots_len.read();
-        self.merkle_roots.write(roots_len, new_root);
+        self.merkle_roots.entry(roots_len).write(new_root);
         let new_roots_len = roots_len + 1;
         self.roots_len.write(new_roots_len);
         remove_old_root(ref self, new_roots_len);
@@ -322,7 +322,7 @@ mod StarkSwirl {
 
     // remove the root that is older than allowed
     fn remove_old_root(ref self: ContractState, current_len: felt252) {
-        self.merkle_roots.write(current_len - MAX_ROOTS_DEPTH, 0);
+        self.merkle_roots.entry(current_len - MAX_ROOTS_DEPTH).write(0);
     }
 
     fn find_root(self: @ContractState, root: felt252) -> bool {
@@ -335,7 +335,7 @@ mod StarkSwirl {
                 break;
             }
 
-            let current_root = self.merkle_roots.read(current_index - 1);
+            let current_root = self.merkle_roots.entry(current_index - 1).read();
 
             if current_root == root {
                 root_found = true;
